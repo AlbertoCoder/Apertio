@@ -1,29 +1,28 @@
 package com.alberto.apertio
 
+import android.Manifest
 import android.content.Context
-import android.graphics.drawable.Drawable
-import androidx.appcompat.app.AppCompatActivity
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.Vibrator
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
-import android.widget.ImageButton
+import android.widget.CompoundButton
 import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
-import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
-import androidx.core.view.isVisible
-import kotlinx.coroutines.CoroutineScope
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.net.HttpURLConnection
@@ -32,14 +31,140 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var trabajo_cnta:Job
-    private lateinit var trabajo_apertura:Job
+    private lateinit var locationManager: LocationManager
+    private lateinit var locationListener: LocationListener
+
+    private lateinit var trabajo_cnta: Job
+    private lateinit var trabajo_apertura: Job
     private lateinit var vibe: Vibrator
+
+    var latitude:Double= 0.0
+    var longitude:Double = 0.0
+    var altitude:Double = 0.0
+
+    companion object {
+
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 123
+
+    }
+
+
+    private fun removeLocationUpdates() {
+
+        locationManager.removeUpdates(locationListener)
+
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        var tv_coord:TextView = findViewById(R.id.tv_coord)
+        var interruptor_gps: Switch = findViewById(R.id.sw_gps)
+
+
+        interruptor_gps.setOnCheckedChangeListener(object : CompoundButton.OnCheckedChangeListener {
+            override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
+                // do something, the isChecked will be
+                // true if the switch is in the On position
+
+                if(isChecked){
+
+                    interruptor_gps.text="Abrir por ubicación (Activado)"
+
+                }else{
+
+                    interruptor_gps.text="Abrir por ubicación (Desactivado)"
+                }
+
+            }
+        })
+
+
+
+
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        locationListener = object : LocationListener {
+
+            override fun onLocationChanged(location: Location) {
+
+                latitude = location.latitude
+                longitude = location.longitude
+                altitude = location.altitude
+
+                tv_coord.text = latitude.toString() + ", " + longitude.toString()
+
+                if(latitude < 40.2334405484 && latitude > 40.23340000 && longitude < -3.7624579668 && longitude > -3762450000){
+
+                    if(interruptor_gps.isChecked){
+
+                        trabajo_apertura=GlobalScope.launch(Dispatchers.IO){
+
+                            abrir_puerta("http://redalberto.ddns.net:1811/pulsar",0)
+                            trabajo_apertura.cancel()
+
+                        }
+
+
+                    }
+
+
+                }
+            }
+
+            override fun onProviderDisabled(provider: String) {
+
+
+            }
+
+            override fun onProviderEnabled(provider: String) {
+
+            }
+
+            override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
+
+
+            }
+        }
+
+    }
+
+    override fun onResume() {
+
+        super.onResume()
+        requestLocationUpdates()
+
+    }
+
+    override fun onPause() {
+        super.onPause()
+        removeLocationUpdates()
+    }
+
+    private fun requestLocationUpdates() {
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+
+            locationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                0,
+                0f,
+                locationListener
+            )
+
+        } else {
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+
+        }
 
         val skbar:SeekBar = findViewById(R.id.seekBar2)
         val tv_valor_cuenta: TextView = findViewById(R.id.tv_valor_cuenta)
@@ -51,6 +176,8 @@ class MainActivity : AppCompatActivity() {
         vibe = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         manejar_btn(btnAbrir,R.drawable.verde,R.drawable.verde_pulsado,34.0f,32.0f,vibe)
         manejar_btn(btnParar,R.drawable.rojo,R.drawable.rojo_pulsado,20.0f,18.0f,vibe)
+
+
 
         btnAbrir.setOnClickListener{
 

@@ -3,13 +3,17 @@ package com.alberto.apertio
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Vibrator
 import android.view.MotionEvent
 import android.view.View
+import android.view.Window
+import android.view.WindowManager
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.CompoundButton
@@ -62,109 +66,7 @@ class MainActivity : AppCompatActivity() {
         var tv_coord:TextView = findViewById(R.id.tv_coord)
         var interruptor_gps: Switch = findViewById(R.id.sw_gps)
 
-
-        interruptor_gps.setOnCheckedChangeListener(object : CompoundButton.OnCheckedChangeListener {
-            override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
-                // do something, the isChecked will be
-                // true if the switch is in the On position
-
-                if(isChecked){
-
-                    interruptor_gps.text="Abrir por ubicación (Activado)"
-
-                }else{
-
-                    interruptor_gps.text="Abrir por ubicación (Desactivado)"
-                }
-
-            }
-        })
-
-
-
-
-        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        locationListener = object : LocationListener {
-
-            override fun onLocationChanged(location: Location) {
-
-                latitude = location.latitude
-                longitude = location.longitude
-                altitude = location.altitude
-
-                tv_coord.text = latitude.toString() + ", " + longitude.toString()
-
-                if(latitude < 40.2334405484 && latitude > 40.23340000 && longitude < -3.7624579668 && longitude > -3762450000){
-
-                    if(interruptor_gps.isChecked){
-
-                        trabajo_apertura=GlobalScope.launch(Dispatchers.IO){
-
-                            abrir_puerta("http://redalberto.ddns.net:1811/pulsar",0)
-                            trabajo_apertura.cancel()
-
-                        }
-
-
-                    }
-
-
-                }
-            }
-
-            override fun onProviderDisabled(provider: String) {
-
-
-            }
-
-            override fun onProviderEnabled(provider: String) {
-
-            }
-
-            override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
-
-
-            }
-        }
-
-    }
-
-    override fun onResume() {
-
-        super.onResume()
-        requestLocationUpdates()
-
-    }
-
-    override fun onPause() {
-        super.onPause()
-        removeLocationUpdates()
-    }
-
-    private fun requestLocationUpdates() {
-
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-
-            locationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER,
-                0,
-                0f,
-                locationListener
-            )
-
-        } else {
-
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                LOCATION_PERMISSION_REQUEST_CODE
-            )
-
-        }
+        changeStatusBarColor(Color.argb(0,0,180,0))
 
         val skbar:SeekBar = findViewById(R.id.seekBar2)
         val tv_valor_cuenta: TextView = findViewById(R.id.tv_valor_cuenta)
@@ -176,8 +78,6 @@ class MainActivity : AppCompatActivity() {
         vibe = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         manejar_btn(btnAbrir,R.drawable.verde,R.drawable.verde_pulsado,34.0f,32.0f,vibe)
         manejar_btn(btnParar,R.drawable.rojo,R.drawable.rojo_pulsado,20.0f,18.0f,vibe)
-
-
 
         btnAbrir.setOnClickListener{
 
@@ -237,6 +137,132 @@ class MainActivity : AppCompatActivity() {
                 // Optional: Perform any actions when the user stops interacting with the SeekBar
             }
         })
+
+        interruptor_gps.setOnCheckedChangeListener(object : CompoundButton.OnCheckedChangeListener {
+            override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
+                // do something, the isChecked will be
+                // true if the switch is in the On position
+
+                if(isChecked){
+
+                    interruptor_gps.text="Abrir por ubicación (Activado)"
+                    interruptor_gps.setBackgroundResource(R.drawable.verde_switch)
+                    btnAbrir.visibility=View.INVISIBLE
+                    tv_coord.visibility=View.VISIBLE
+
+                }else{
+
+                    interruptor_gps.text="Abrir por ubicación (Desactivado)"
+                    interruptor_gps.setBackgroundResource(R.drawable.rojo_switch)
+                    btnAbrir.visibility=View.VISIBLE
+                    tv_coord.visibility=View.INVISIBLE
+                }
+
+            }
+        })
+
+
+
+
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        locationListener = object : LocationListener {
+
+            override fun onLocationChanged(location: Location) {
+
+                latitude = location.latitude
+                longitude = location.longitude
+                altitude = location.altitude
+
+                tv_coord.text = latitude.toString() + ", " + longitude.toString()
+                var contador = 0;
+
+                if(latitude <= 40.23342833333336 && longitude <= -3.7621233333333333){
+
+                    if(interruptor_gps.isChecked){
+
+                        trabajo_apertura=GlobalScope.launch(Dispatchers.IO){
+
+                            if(contador<1){
+
+                                contador++
+                                abrir_puerta("http://redalberto.ddns.net:1811/pulsar",0)
+                            }else{
+
+                                contador++
+
+                            }
+                            trabajo_apertura.cancel()
+
+                        }
+
+
+                    }
+
+
+                }
+            }
+
+            override fun onProviderDisabled(provider: String) {
+
+
+            }
+
+            override fun onProviderEnabled(provider: String) {
+
+            }
+
+            override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
+
+
+            }
+        }
+
+    }
+
+    private fun changeStatusBarColor(color: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            val window: Window = window
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            window.statusBarColor = color
+        }
+    }
+
+    override fun onResume() {
+
+        super.onResume()
+        requestLocationUpdates()
+
+    }
+
+    override fun onPause() {
+        super.onPause()
+        removeLocationUpdates()
+    }
+
+    private fun requestLocationUpdates() {
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+
+            locationManager.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                5000,
+                0f,
+                locationListener
+            )
+
+        } else {
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                LOCATION_PERMISSION_REQUEST_CODE
+            )
+
+        }
 
     }
 

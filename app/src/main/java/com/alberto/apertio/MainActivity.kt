@@ -18,8 +18,8 @@ import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.CompoundButton
 import android.widget.SeekBar
-import android.widget.Switch
 import android.widget.TextView
+import android.widget.ToggleButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.app.ActivityCompat
@@ -49,9 +49,10 @@ class MainActivity : AppCompatActivity() {
     companion object {
 
         private const val LOCATION_PERMISSION_REQUEST_CODE = 123
-
+        private const val latitud_portal = 40.2334
+        private const val longitud_portal = -3.7625
+        private const val variac = 0.0100
     }
-
 
     private fun removeLocationUpdates() {
 
@@ -64,7 +65,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         var tv_coord:TextView = findViewById(R.id.tv_coord)
-        var interruptor_gps: Switch = findViewById(R.id.sw_gps)
+        var interruptor_gps: ToggleButton = findViewById(R.id.sw_gps)
 
         changeStatusBarColor(Color.argb(0,0,180,0))
 
@@ -145,17 +146,20 @@ class MainActivity : AppCompatActivity() {
 
                 if(isChecked){
 
-                    interruptor_gps.text="Abrir por ubicación (Activado)"
-                    interruptor_gps.setBackgroundResource(R.drawable.verde_switch)
+                    interruptor_gps.setBackgroundResource(R.drawable.verde_switch_on)
                     btnAbrir.visibility=View.INVISIBLE
+                    btnParar.visibility=View.INVISIBLE
                     tv_coord.visibility=View.VISIBLE
-
+                    tv_valor_cuenta.visibility=View.INVISIBLE
+                    skbar.visibility=View.INVISIBLE
                 }else{
 
-                    interruptor_gps.text="Abrir por ubicación (Desactivado)"
-                    interruptor_gps.setBackgroundResource(R.drawable.rojo_switch)
+                    interruptor_gps.setBackgroundResource(R.drawable.verde_switch_off)
                     btnAbrir.visibility=View.VISIBLE
+                    btnParar.visibility=View.VISIBLE
                     tv_coord.visibility=View.INVISIBLE
+                    tv_valor_cuenta.visibility=View.VISIBLE
+                    skbar.visibility=View.VISIBLE
                 }
 
             }
@@ -176,13 +180,16 @@ class MainActivity : AppCompatActivity() {
                 tv_coord.text = latitude.toString() + ", " + longitude.toString()
                 var contador = 0;
 
-                if(latitude <= 40.23342833333336 && longitude <= -3.7621233333333333){
+                if((latitude in latitud_portal..latitud_portal+variac) 
+                || (latitude in latitud_portal..latitud_portal-variac) 
+                && (longitude in longitud_portal..longitud_portal+variac)
+                || (longitude in longitud_portal..longitud_portal-variac)){
 
                     if(interruptor_gps.isChecked){
 
                         trabajo_apertura=GlobalScope.launch(Dispatchers.IO){
 
-                            if(contador<1){
+                            if(contador<=1){
 
                                 contador++
                                 abrir_puerta("http://redalberto.ddns.net:1811/pulsar",0)
@@ -249,8 +256,8 @@ class MainActivity : AppCompatActivity() {
 
             locationManager.requestLocationUpdates(
                 LocationManager.GPS_PROVIDER,
-                5000,
-                0f,
+                1000,
+                1.0f,
                 locationListener
             )
 
